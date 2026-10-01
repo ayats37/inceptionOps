@@ -69,10 +69,16 @@ services:
 networks:
   inception:
     driver: bridge
-
 volumes:
   mariadb_data:
-    name: mariadb_data
-
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/taya/data/mariadb
   wordpress_data:
-    name: wordpress_data
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/taya/data/wordpress
