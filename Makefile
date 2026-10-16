@@ -1,46 +1,32 @@
-include srcs/.env
+NAME = inception
 
-COMPOSE_FILE = srcs/docker-compose.yml
-ENV_FILE = srcs/.env
-COMPOSE = docker compose -f $(COMPOSE_FILE) --env-file $(ENV_FILE)
+# Chemin vers le dossier srcs où se trouve ton docker-compose.yml
+SRCS = ./srcs/docker-compose.yml
 
-DATA_ROOT = /home/$(LOGIN)/data
-MARIADB_DATA = $(DATA_ROOT)/mariadb
-WORDPRESS_DATA = $(DATA_ROOT)/wordpress
+# Dossiers pour les volumes (Chemins absolus recommandés pour Docker)
+DATA_PATH = /home/taya/data
+MARIADB_DATA = $(DATA_PATH)/mariadb
+WORDPRESS_DATA = $(DATA_PATH)/wordpress
 
-.PHONY: all up down build ps logs clean fclean re init-data check-env
-
-all: up
-
-up: init-data check-env
-	$(COMPOSE) up -d --build
-
-build: init-data check-env
-	$(COMPOSE) build
+all:
+	@printf "Création des dossiers de données...\n"
+	@mkdir -p $(MARIADB_DATA)
+	@mkdir -p $(WORDPRESS_DATA)
+	@printf "Lancement de la configuration Docker...\n"
+	@docker-compose -f $(SRCS) up --build -d
 
 down:
-	$(COMPOSE) down
+	@printf "Arrêt des conteneurs...\n"
+	@docker-compose -f $(SRCS) down
 
-ps:
-	$(COMPOSE) ps
-
-logs:
-	$(COMPOSE) logs -f
-
-clean:
-	$(COMPOSE) down -v --remove-orphans
+clean: down
+	@printf "Nettoyage des conteneurs, réseaux et images...\n"
+	@docker-compose -f $(SRCS) down --rmi all --volumes
 
 fclean: clean
-	docker image rm -f mariadb wordpress nginx 2>/dev/null || true
-	docker volume rm -f mariadb_data wordpress_data 2>/dev/null || true
+	@printf "Suppression définitive des volumes de données...\n"
+	@sudo rm -rf $(DATA_PATH)
 
-re: fclean up
+re: fclean all
 
-init-data:
-	mkdir -p $(MARIADB_DATA) $(WORDPRESS_DATA)
-
-check-env:
-	@test -n "$(MYSQL_PASSWORD)" || (echo "Missing MYSQL_PASSWORD in srcs/.env" && exit 1)
-	@test -n "$(MYSQL_ROOT_PASSWORD)" || (echo "Missing MYSQL_ROOT_PASSWORD in srcs/.env" && exit 1)
-	@test -n "$(WP_ADMIN_PASSWORD)" || (echo "Missing WP_ADMIN_PASSWORD in srcs/.env" && exit 1)
-	@test -n "$(WP_USER_PASSWORD)" || (echo "Missing WP_USER_PASSWORD in srcs/.env" && exit 1)
+.PHONY: all down clean fclean re
